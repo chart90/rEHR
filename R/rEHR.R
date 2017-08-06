@@ -5,6 +5,7 @@
 #' @import assertthat
 #' @import stringr
 #' @import dplyr
+#' @import dbplyr
 #' @import RSQLite
 #' @import sqldf
 #' @import parallel

@@ -1,25 +1,25 @@
 #' Function to extract rows from a lookup table based on keywords
-#' 
-#' This function can be used to build draft clinical code lists based on a clinical or 
+#'
+#' This function can be used to build draft clinical code lists based on a clinical or
 #' product lookup table and a set of keywords.
-#' 
+#'
 #' See www.clinicalcodes.org for clinical code lists that have been used in previous studies
-#' 
+#'
 #' All keywords are collapsed together in an OR statement
-#' 
+#'
 #' @export
-#' 
+#'
 #' @param lookup a dataframe containing a lookup table
 #' @param keywords character vector containing the keyword terms to search for
-#' @param keyword_field character identifying the field in the lookup table to be searched 
+#' @param keyword_field character identifying the field in the lookup table to be searched
 #' for keywords
 #' @return a data frame subsetted by keyword
 #' @examples \dontrun{
-#' keywords <- c('oral ulceration', 'mouth ulceration', 'aphthous ulceration', 
-#' 'oral aphthous ulceration','oral ulcer[s]?', 'mouth ulcer[s]?', 'aphthous ulcer[s]?', 
-#' 'aphthous stomatitis', "stomatitis", "aphthae", 'oral aphthous stomatitis', 
-#' 'oral aphthous ulcers', 'recurrent oral ulcers', 'recurrent mouth ulcers', 
-#' 'recurrent oral aphthous ulcers', 'recurrent aphthous ulcers', 'recurrent aphthous stomatitis', 
+#' keywords <- c('oral ulceration', 'mouth ulceration', 'aphthous ulceration',
+#' 'oral aphthous ulceration','oral ulcer[s]?', 'mouth ulcer[s]?', 'aphthous ulcer[s]?',
+#' 'aphthous stomatitis', "stomatitis", "aphthae", 'oral aphthous stomatitis',
+#' 'oral aphthous ulcers', 'recurrent oral ulcers', 'recurrent mouth ulcers',
+#' 'recurrent oral aphthous ulcers', 'recurrent aphthous ulcers', 'recurrent aphthous stomatitis',
 #' 'recurrent oral aphthous stomatitis')
 #' a <- extract_keywords(medical, keywords)
 #' }
@@ -48,9 +48,9 @@ MedicalDefinition <- function(terms = NULL, codes = NULL, tests = NULL,
                               drugs = NULL, drugcodes = NULL){
     def <- structure(
         list(terms = terms,
-             codes = terms,
-             tests = terms,
-             drugs = terms,
+             codes = codes,
+             tests = tests,
+             drugs = drugs,
              drugcodes = drugcodes),
         class = "MedicalDefinition")
     for(item in def){
@@ -69,7 +69,7 @@ import_definitions <- function(input_file){
     con  <- file(input_file, open = "r")
     def_list <- MedicalDefinition(list(), list(), list(), list(), list())
     n <- 1
-    
+
     while (length(point <- readLines(con, n = 1, warn = FALSE)) > 0) {
         point <- gsub("\\\\","\\", point) # get rid of double escape characters due to readLines
         point_data <- strsplit(point, ",")[[1]]
@@ -146,11 +146,11 @@ definition_search <- function(def, medical_table = NULL, test_table = NULL,
         } else {
             stop("Either library(rEHR) and choose an EHR to lookup from or assign your own lookup (See details)")
         }
-        
+
     }
-    
+
     ## Helper functions:
-    
+
     ## Convert to lowercase if not all capitals, plus replace underscores with spaces
     fix_case <- function(input){
         if(is(input, "list")){
@@ -172,19 +172,19 @@ definition_search <- function(def, medical_table = NULL, test_table = NULL,
             out
         } else "ZZZZZZZZZZZZZZZZZ"
     }
-    
+
     ## Builds the regex expression for the deired terms then extracts the matching terms from
     ## the lookup table
-    
+
     lookup_terms <- function(term_table){
         terms <- fix_case(def[[def_name]])
         excludes <- sapply(terms, function(x) substring(x, 1, 1)[1] == "-")
         exclude_terms <- check_terms(excludes, sub("^-", "", unlist(terms[excludes])))
-        
+
         terms <- terms[!excludes]
         resolved <- sapply(terms, function(x) substring(x, 1, 2)[1] == "r%")
         resolved_terms <- check_terms(resolved, sub("^r%", "", terms[resolved]))
-        
+
         simple_terms_p <- vapply(terms, function(x) length(x) == 1, TRUE)
         simple_terms <- check_terms(simple_terms_p,
                                     paste0("(", paste0(terms[simple_terms_p],
@@ -208,14 +208,14 @@ definition_search <- function(def, medical_table = NULL, test_table = NULL,
         terms_out$resolved[str_detect(terms_out[[lookup[[def_name]]]], resolved_terms)] <- 1
         list(terms = terms_out, excludes = exclude_terms)
     }
-    
+
     lookup_codes <- function(term_table){
         term_table <- arrange_(term_table, lookup$codes )
         #   search.codes<-str_replace_all(search.codes,' ','')
         #   search.codes.set<-unlist(str_split(search.codes,','))
         codes <- unlist(def[[def_name]])
         range_codes <- codes[str_detect(codes, ".+(-)")]
-        
+
         range_table_codes <- dplyr::bind_rows(lapply(range_codes, function(x){
             rang.codes <- unlist(str_split(x, '-'))
             rang.codes <- str_c('^',rang.codes)
@@ -225,7 +225,7 @@ definition_search <- function(def, medical_table = NULL, test_table = NULL,
             term_table[pos.ini:pos.fin,]
         })) %>%
             mutate(resolved = 0)
-        
+
         ## remove exclusions and note resolves
         single_codes <- codes[!codes %in% range_codes]
         excludes <- sapply(single_codes, function(x) substring(x, 1, 1)[1] == "-")
@@ -244,13 +244,13 @@ definition_search <- function(def, medical_table = NULL, test_table = NULL,
         code_table <- filter(term_table, matches)
         code_table$resolved <- 0
         code_table$resolved[ str_detect(code_table$readcode, resolved_codes)] <- 1
-        
+
         all_codes <- dplyr::bind_rows(code_table, range_table_codes) %>%
             dplyr::distinct_(lookup$codes)
-        
+
         list(codes = all_codes, excludes = exclude_codes)
     }
-    
+
     ## cases for the different tables to be searched
     for(def_name in names(def)){
         if (def_name == "terms"){
